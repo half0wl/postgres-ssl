@@ -52,7 +52,7 @@ log_hl "PG_HBA_CONF_FILE            = $PG_HBA_CONF_FILE"
 if grep -q \
     "include 'postgresql.replication.conf'" "$PG_CONF_FILE" 2>/dev/null; then
         log "Primary configuration appears to be configured. Skipping."
-    exit 1
+    exit 0
 fi
 
 # Create replication configuration file

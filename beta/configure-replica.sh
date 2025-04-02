@@ -151,5 +151,5 @@ else
 fi
 
 # Run Postgres via the image's entrypoint script
-source "$ENSURE_SSL_SCRIPT"
-/usr/local/bin/docker-entrypoint.sh "$@"
+# source "$ENSURE_SSL_SCRIPT"
+# /usr/local/bin/docker-entrypoint.sh "$@"
