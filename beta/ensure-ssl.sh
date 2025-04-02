@@ -31,7 +31,6 @@ then
   # Generate root CSR
   log "SSL: Generating Certificate Signing Request (CSR) for Root CA ⏳"
   openssl req \
-    -quiet \
     -new \
     -nodes \
     -text \
@@ -66,7 +65,6 @@ EOF
   # Create new server cert signed by root CA
   log "SSL: Generating private key for server certificate ⏳"
   openssl req \
-    -quiet \
     -new \
     -nodes \
     -text \

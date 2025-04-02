@@ -2,32 +2,10 @@ FROM postgres:16-bookworm
 
 RUN apt-get update && apt-get install -y \
     sudo \
-    build-essential \
-    checkinstall \
-    zlib1g-dev \
-    wget \
     curl \
     vim \
     postgresql-16-repmgr \
     && rm -rf /var/lib/apt/lists/*
-
-# Download and install OpenSSL 3.4.0
-RUN mkdir -p /usr/local/src/openssl \
-    && cd /usr/local/src/openssl \
-    && wget https://www.openssl.org/source/openssl-3.4.0.tar.gz \
-    && tar -xzf openssl-3.4.0.tar.gz \
-    && cd openssl-3.4.0 \
-    && ./config --prefix=/usr/local/ssl --openssldir=/usr/local/ssl shared \
-    && make -j$(nproc) \
-    && make test \
-    && make install \
-    && ln -sf /usr/local/ssl/bin/openssl /usr/local/bin/openssl \
-    && ln -sf /usr/local/ssl/lib64/libssl.so.3 /usr/lib/x86_64-linux-gnu/ \
-    && ln -sf /usr/local/ssl/lib64/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/ \
-    && echo "/usr/local/ssl/lib64" > /etc/ld.so.conf.d/openssl-3.4.0.conf \
-    && ldconfig \
-    && cd / \
-    && rm -rf /usr/local/src/openssl
 
 RUN echo \
     "postgres ALL=(root) NOPASSWD: /usr/bin/mkdir, /bin/chown, \
