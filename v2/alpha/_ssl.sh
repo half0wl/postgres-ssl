@@ -15,8 +15,7 @@ SSL_SERVER_CSR="$SSL_CERTS_DIR/server.csr"
 SSL_SERVER_CRT="$SSL_CERTS_DIR/server.crt"
 SSL_SERVER_KEY="$SSL_CERTS_DIR/server.key"
 
-if [ ! -f "$SSL_SERVER_CRT" ]
-then
+if [ ! -f "$SSL_SERVER_CRT" ]; then
   log "SSL: Server certificate is missing. Generating ⏳"
 
   # Generate root CSR
@@ -34,7 +33,7 @@ then
 
   # Use CSR to generate root x509v3 CA
   log "SSL: Generating x509v3 Root CA certificate ⏳"
-  cat >| "$SSL_V3_EXT_FILE" <<EOF
+  cat >|"$SSL_V3_EXT_FILE" <<EOF
 [v3_ca_req]
 authorityKeyIdentifier = keyid, issuer
 basicConstraints = critical, CA:TRUE
@@ -81,16 +80,16 @@ EOF
 
   log_ok "SSL: Server certificate has been successfully generated."
 else
-  server_cert_exp=$(openssl x509 \
-    -enddate \
-    -noout \
-    -in "$SSL_CERTS_DIR/server.crt" \
-    | cut -d= -f2 \
+  server_cert_exp=$(
+    openssl x509 \
+      -enddate \
+      -noout \
+      -in "$SSL_CERTS_DIR/server.crt" |
+      cut -d= -f2
   )
   log "SSL: Server certificate will expire on $server_cert_exp."
 
-  if ! openssl x509 -checkend 0 -in "$SSL_CERTS_DIR/server.crt" > /dev/null
-  then
+  if ! openssl x509 -checkend 0 -in "$SSL_CERTS_DIR/server.crt" >/dev/null; then
     log_warn "SSL: Server certificate is expiring. Renewing ⏳"
     openssl x509 \
       -req \
@@ -109,7 +108,7 @@ else
 fi
 
 if ! grep -q "ssl = on" "$PG_CONF_FILE"; then
-  cat >> "$PG_CONF_FILE" <<EOF
+  cat >>"$PG_CONF_FILE" <<EOF
 ssl = on
 ssl_ca_file = '$SSL_ROOT_CRT'
 ssl_key_file = '$SSL_SERVER_KEY'

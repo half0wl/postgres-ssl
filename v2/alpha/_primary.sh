@@ -3,10 +3,10 @@
 log "🚀 Starting primary configuration..."
 
 if [ "$RAILWAY_PG_INSTANCE_TYPE" != "PRIMARY" ]; then
-    log_err "This script can only be executed on a primary instance."
-    log_err "(expected: RAILWAY_PG_INSTANCE_TYPE='PRIMARY')"
-    log_err "(received: RAILWAY_PG_INSTANCE_TYPE='$RAILWAY_PG_INSTANCE_TYPE')"
-    exit 1
+  log_err "This script can only be executed on a primary instance."
+  log_err "(expected: RAILWAY_PG_INSTANCE_TYPE='PRIMARY')"
+  log_err "(received: RAILWAY_PG_INSTANCE_TYPE='$RAILWAY_PG_INSTANCE_TYPE')"
+  exit 1
 fi
 
 PG_REPLICATION_CONF_FILE="${PG_DATA_DIR}/postgresql.replication.conf"
@@ -19,17 +19,17 @@ su -m postgres -c "pg_ctl -D ${PGDATA} start"
 # Create repmgr user and database
 log "Creating repmgr user and database ⏳"
 if ! psql -c "SELECT 1 FROM pg_roles WHERE rolname='repmgr'" | grep -q 1; then
-    psql -c "CREATE USER repmgr WITH SUPERUSER PASSWORD '${REPMGR_USER_PWD}';"
-    log_ok "Created repmgr user"
+  psql -c "CREATE USER repmgr WITH SUPERUSER PASSWORD '${REPMGR_USER_PWD}';"
+  log_ok "Created repmgr user"
 else
-    log "User repmgr already exists"
+  log "User repmgr already exists"
 fi
 
 if ! psql -c "SELECT 1 FROM pg_database WHERE datname='repmgr'" | grep -q 1; then
-    psql -c "CREATE DATABASE repmgr;"
-    log_ok "Created repmgr database"
+  psql -c "CREATE DATABASE repmgr;"
+  log_ok "Created repmgr database"
 else
-    log "Database repmgr already exists"
+  log "Database repmgr already exists"
 fi
 
 # Grant permissions to repmgr user
@@ -44,7 +44,7 @@ su -m postgres -c "pg_ctl -D ${PGDATA} stop"
 
 # Create repmgr configuration file
 # (node_id is always 1 on primary)
-cat > "$REPMGR_CONF" << EOF
+cat >"$REPMGR_CONF" <<EOF
 node_id=1
 node_name='node1'
 conninfo='host=${RAILWAY_PRIVATE_DOMAIN} port=${PGPORT} user=repmgr dbname=repmgr connect_timeout=10'
@@ -56,7 +56,7 @@ log_ok "Created repmgr configuration at '$REPMGR_CONF'"
 
 # Create replication configuration file
 log "Creating replication configuration file at '$PG_REPLICATION_CONF_FILE'"
-cat > "PG_REPLICATION_CONF_FILE" << EOF
+cat >"PG_REPLICATION_CONF_FILE" <<EOF
 max_wal_senders = 20
 max_replication_slots = 20
 wal_keep_segments = 800
@@ -72,47 +72,47 @@ PG_CONF_FILE_BAK="${PG_CONF_FILE}.$(date +'%d-%m-%Y').bak"
 log "Backing up '$PG_CONF_FILE' to '$PG_CONF_FILE_BAK' ⏳"
 cp $PG_CONF_FILE $PG_CONF_FILE_BAK
 log_ok "'$PG_CONF_FILE' backed up to '$PG_CONF_FILE_BAK'"
-echo "" >> "$PG_CONF_FILE"
-echo "# Added by Railway replication setup on $(date +'%Y-%m-%d %H:%M:%S')" >> "$PG_CONF_FILE"
-echo "include 'postgresql.replication.conf'" >> "$PG_CONF_FILE"
+echo "" >>"$PG_CONF_FILE"
+echo "# Added by Railway replication setup on $(date +'%Y-%m-%d %H:%M:%S')" >>"$PG_CONF_FILE"
+echo "include 'postgresql.replication.conf'" >>"$PG_CONF_FILE"
 log_ok "Added include directive to '$PG_CONF_FILE'"
 
 # Register primary node
 log "Registering primary node with repmgr ⏳"
 export PGPASSWORD="$REPMGR_USER_PWD"
 if su -m postgres -c "repmgr -f $REPMGR_CONF primary register"; then
-    log_ok "Successfully registered primary node"
+  log_ok "Successfully registered primary node"
 
-    # Modify pg_hba.conf to allow replication access
-    LAST_LINE=$(tail -n 1 "$PG_HBA_CONF")
-    if [ "$LAST_LINE" != "host all all all scram-sha-256" ]; then
-        log_err "The last line of pg_hba.conf is not 'host all all all scram-sha-256'"
-        log_err "Current last line: '$LAST_LINE'"
-        log_err "Skipping pg_hba.conf modification"
-    else
-        PG_HBA_CONF_FILE_BAK="${PG_HBA_CONF_FILE}.$(date +'%d-%m-%Y').bak"
-        log "Backing up '$PG_HBA_CONF_FILE' to '$PG_HBA_CONF_FILE_BAK' ⏳"
-        cp $PG_HBA_CONF_FILE $PG_HBA_CONF_FILE_BAK
-        log_ok "'$PG_HBA_CONF_FILE' backed up to '$PG_HBA_CONF_FILE_BAK'"
+  # Modify pg_hba.conf to allow replication access
+  LAST_LINE=$(tail -n 1 "$PG_HBA_CONF")
+  if [ "$LAST_LINE" != "host all all all scram-sha-256" ]; then
+    log_err "The last line of pg_hba.conf is not 'host all all all scram-sha-256'"
+    log_err "Current last line: '$LAST_LINE'"
+    log_err "Skipping pg_hba.conf modification"
+  else
+    PG_HBA_CONF_FILE_BAK="${PG_HBA_CONF_FILE}.$(date +'%d-%m-%Y').bak"
+    log "Backing up '$PG_HBA_CONF_FILE' to '$PG_HBA_CONF_FILE_BAK' ⏳"
+    cp $PG_HBA_CONF_FILE $PG_HBA_CONF_FILE_BAK
+    log_ok "'$PG_HBA_CONF_FILE' backed up to '$PG_HBA_CONF_FILE_BAK'"
 
-        # Create temporary file with the desired content
-        _TMPFILE=$(mktemp)
-        # Get all lines except the last one
-        head -n -1 "$PG_HBA_CONF" > "$_TMPFILE"
-        # Add our new line
-        echo "# Added by Railway on $(date +'%Y-%m-%d %H:%M:%S')" >> "$_TMPFILE"
-        echo "host replication repmgr ::0/0 trust" >> "$_TMPFILE"
-        # Add the last line back
-        echo "host all all all scram-sha-256" >> "$_TMPFILE"
+    # Create temporary file with the desired content
+    _TMPFILE=$(mktemp)
+    # Get all lines except the last one
+    head -n -1 "$PG_HBA_CONF" >"$_TMPFILE"
+    # Add our new line
+    echo "# Added by Railway on $(date +'%Y-%m-%d %H:%M:%S')" >>"$_TMPFILE"
+    echo "host replication repmgr ::0/0 trust" >>"$_TMPFILE"
+    # Add the last line back
+    echo "host all all all scram-sha-256" >>"$_TMPFILE"
 
-        # Replace the original file
-        mv "$_TMPFILE" "$PG_HBA_CONF"
-        sudo chown postgres:postgres "$PG_HBA_CONF"
-        sudo chmod 600 "$PG_HBA_CONF"
+    # Replace the original file
+    mv "$_TMPFILE" "$PG_HBA_CONF"
+    sudo chown postgres:postgres "$PG_HBA_CONF"
+    sudo chmod 600 "$PG_HBA_CONF"
 
-        log_ok "Successfully updated '$PG_HBA_CONF_FILE' with replication access."
-    fi
-    log_ok "Primary node configuration complete."
+    log_ok "Successfully updated '$PG_HBA_CONF_FILE' with replication access."
+  fi
+  log_ok "Primary node configuration complete."
 else
-    log_err "Failed to register primary node with repmgr."
+  log_err "Failed to register primary node with repmgr."
 fi
