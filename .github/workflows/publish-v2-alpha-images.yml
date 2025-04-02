@@ -1,4 +1,4 @@
-name: Publish Beta Images
+name: Publish v2-alpha images
 
 on:
   workflow_dispatch:
@@ -49,8 +49,8 @@ jobs:
       - name: Build and Publish
         uses: docker/build-push-action@v5
         with:
-          context: ./beta
-          file: ./beta/${{ matrix.dockerfile }}
+          context: ./v2/alpha
+          file: ./v2/alpha/${{ matrix.dockerfile }}
           platforms: linux/arm64, linux/amd64
           push: true
-          tags: ghcr.io/${{ github.repository }}:${{ steps.extract_version.outputs.version }}-beta
+          tags: ghcr.io/${{ github.repository }}:${{ steps.extract_version.outputs.version }}-v2-alpha

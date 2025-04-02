@@ -1,43 +1,16 @@
 #!/bin/bash
-# --------------------------------------------------------------------------- #
-# Configure and run a Postgres primary replica using repmgr.
-#
-# This script is intended to be run as the entrypoint for a container
-# running Postgres on Railway. It is not intended to be run directly!
-#
-# https://docs.railway.com/tutorials/postgres-replication
-# --------------------------------------------------------------------------- #
-set -e
-source _include.sh
-
-# Ensure required environment variables are set
-REQUIRED_ENV_VARS=(\
-    "RAILWAY_PG_INSTANCE_TYPE" \
-    "RAILWAY_VOLUME_NAME" \
-    "RAILWAY_VOLUME_MOUNT_PATH" \
-    "RAILWAY_PRIVATE_DOMAIN" \
-    "REPMGR_USER_PWD" \
-    "PGPORT" \
-    "PGDATA" \
-)
-for var in "${REQUIRED_ENV_VARS[@]}"; do
-    if [ -z "${!var}" ]; then
-        log_err "Missing required environment variable: $var"
-        exit 1
-    fi
-done
-
-if [ "$RAILWAY_PG_INSTANCE_TYPE" != "PRIMARY" ]; then
-    log_err "This script is intended to be run for a primary instance only."
-    exit 1
-fi
-
-# Set up required variables, directories, and files
-PG_REPLICATION_CONF_FILE="${PG_DATA_DIR}/postgresql.replication.conf"
-PG_HBA_CONF_FILE="${PGDATA}/pg_hba.conf"
 
 log "🚀 Starting primary configuration..."
 
+if [ "$RAILWAY_PG_INSTANCE_TYPE" != "PRIMARY" ]; then
+    log_err "This script can only be executed on a primary instance."
+    log_err "(expected: RAILWAY_PG_INSTANCE_TYPE='PRIMARY')"
+    log_err "(received: RAILWAY_PG_INSTANCE_TYPE='$RAILWAY_PG_INSTANCE_TYPE')"
+    exit 1
+fi
+
+PG_REPLICATION_CONF_FILE="${PG_DATA_DIR}/postgresql.replication.conf"
+PG_HBA_CONF_FILE="${PGDATA}/pg_hba.conf"
 
 # Temporarily start Postgres so we can run psql commands
 log_hl "Starting Postgres ⏳"
@@ -59,15 +32,18 @@ else
     log "Database repmgr already exists"
 fi
 
+# Grant permissions to repmgr user
 psql -c "GRANT ALL PRIVILEGES ON DATABASE repmgr TO repmgr;"
 psql -c "ALTER USER repmgr SET search_path TO repmgr, railway, public;"
+
 log_ok "Configured repmgr user and database permissions"
 
-# Done with psql commands; stop Postgres and continue the setup
+# Stop Postgres and continue the setup
 log_hl "Stopping Postgres ⏳"
 su -m postgres -c "pg_ctl -D ${PGDATA} stop"
 
 # Create repmgr configuration file
+# (node_id is always 1 on primary)
 cat > "$REPMGR_CONF" << EOF
 node_id=1
 node_name='node1'
@@ -114,7 +90,6 @@ if su -m postgres -c "repmgr -f $REPMGR_CONF primary register"; then
         log_err "Current last line: '$LAST_LINE'"
         log_err "Skipping pg_hba.conf modification"
     else
-        # Create backup
         PG_HBA_CONF_FILE_BAK="${PG_HBA_CONF_FILE}.$(date +'%d-%m-%Y').bak"
         log "Backing up '$PG_HBA_CONF_FILE' to '$PG_HBA_CONF_FILE_BAK' ⏳"
         cp $PG_HBA_CONF_FILE $PG_HBA_CONF_FILE_BAK
