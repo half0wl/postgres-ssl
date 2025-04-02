@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+source "/usr/local/bin/_include.sh"
+
 ENSURE_SSL_SCRIPT="/usr/local/bin/ensure-ssl.sh"
 CONFIGURE_PRIMARY_SCRIPT="/usr/local/bin/configure-primary.sh"
 CONFIGURE_REPLICA_SCRIPT="/usr/local/bin/configure-replica.sh"
