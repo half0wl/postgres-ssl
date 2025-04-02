@@ -9,6 +9,11 @@ if [ "$RAILWAY_PG_INSTANCE_TYPE" != "PRIMARY" ]; then
   exit 1
 fi
 
+if [ -z "$REPMGR_USER_PWD" ]; then
+  log_err "REPMGR_USER_PWD is required for primary configuration."
+  exit 1
+fi
+
 PG_REPLICATION_CONF_FILE="${PG_DATA_DIR}/postgresql.replication.conf"
 PG_HBA_CONF_FILE="${PGDATA}/pg_hba.conf"
 
@@ -44,7 +49,7 @@ su -m postgres -c "pg_ctl -D ${PGDATA} stop"
 
 # Create repmgr configuration file
 # (node_id is always 1 on primary)
-cat >"$REPMGR_CONF" <<EOF
+cat >"$REPMGR_CONF_FILE" <<EOF
 node_id=1
 node_name='node1'
 conninfo='host=${RAILWAY_PRIVATE_DOMAIN} port=${PGPORT} user=repmgr dbname=repmgr connect_timeout=10'
@@ -52,7 +57,7 @@ data_directory='${PGDATA}'
 use_replication_slots=yes
 monitoring_history=yes
 EOF
-log_ok "Created repmgr configuration at '$REPMGR_CONF'"
+log_ok "Created repmgr configuration at '$REPMGR_CONF_FILE'"
 
 # Create replication configuration file
 log "Creating replication configuration file at '$PG_REPLICATION_CONF_FILE'"
@@ -80,11 +85,11 @@ log_ok "Added include directive to '$PG_CONF_FILE'"
 # Register primary node
 log "Registering primary node with repmgr ⏳"
 export PGPASSWORD="$REPMGR_USER_PWD"
-if su -m postgres -c "repmgr -f $REPMGR_CONF primary register"; then
+if su -m postgres -c "repmgr -f $REPMGR_CONF_FILE primary register"; then
   log_ok "Successfully registered primary node"
 
   # Modify pg_hba.conf to allow replication access
-  LAST_LINE=$(tail -n 1 "$PG_HBA_CONF")
+  LAST_LINE=$(tail -n 1 "$PG_HBA_CONF_FILE")
   if [ "$LAST_LINE" != "host all all all scram-sha-256" ]; then
     log_err "The last line of pg_hba.conf is not 'host all all all scram-sha-256'"
     log_err "Current last line: '$LAST_LINE'"
@@ -98,7 +103,7 @@ if su -m postgres -c "repmgr -f $REPMGR_CONF primary register"; then
     # Create temporary file with the desired content
     _TMPFILE=$(mktemp)
     # Get all lines except the last one
-    head -n -1 "$PG_HBA_CONF" >"$_TMPFILE"
+    head -n -1 "$PG_HBA_CONF_FILE" >"$_TMPFILE"
     # Add our new line
     echo "# Added by Railway on $(date +'%Y-%m-%d %H:%M:%S')" >>"$_TMPFILE"
     echo "host replication repmgr ::0/0 trust" >>"$_TMPFILE"
@@ -106,9 +111,9 @@ if su -m postgres -c "repmgr -f $REPMGR_CONF primary register"; then
     echo "host all all all scram-sha-256" >>"$_TMPFILE"
 
     # Replace the original file
-    mv "$_TMPFILE" "$PG_HBA_CONF"
+    mv "$_TMPFILE" "$PG_HBA_CONF_FILE"
     sudo chown postgres:postgres "$PG_HBA_CONF"
-    sudo chmod 600 "$PG_HBA_CONF"
+    sudo chmod 600 "$PG_HBA_CONF_FILE"
 
     log_ok "Successfully updated '$PG_HBA_CONF_FILE' with replication access."
   fi

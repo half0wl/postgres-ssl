@@ -39,6 +39,9 @@ log_err() {
   echo -e "[ ${RED_R}⛔ ERR${NC}  ] ${RED_B}$1${NC}" >&2
 }
 
+log_warn "THIS IS AN ALPHA RELEASE."
+log_warn "Do not use this version unless advised by Railway staff."
+
 if [ ! -z "$DEBUG_MODE" ]; then
   log "Starting in debug mode! Postgres will not run."
   log "The container will stay alive and be shell-accessible."
