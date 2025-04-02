@@ -13,7 +13,7 @@ RUN echo \
     > /etc/sudoers.d/postgres
 
 COPY --chmod=755 _primary.sh /usr/local/bin/_primary.sh
-COPY --chmod=755 _replica.sh /usr/local/bin/_replica.sh
+COPY --chmod=755 _readreplica.sh /usr/local/bin/_readreplica.sh
 COPY --chmod=755 _ssl.sh /usr/local/bin/_ssl.sh
 COPY --chmod=755 start.sh /usr/local/bin/start.sh
 
