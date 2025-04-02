@@ -38,6 +38,46 @@ PG_HBA_CONF_FILE="${PGDATA}/pg_hba.conf"
 
 log "🚀 Starting primary configuration..."
 
+
+# Temporarily start Postgres so we can run psql commands
+log_hl "Starting Postgres ⏳"
+su -m postgres -c "pg_ctl -D ${PGDATA} start"
+
+# Create repmgr user and database
+log "Creating repmgr user and database ⏳"
+if ! psql -c "SELECT 1 FROM pg_roles WHERE rolname='repmgr'" | grep -q 1; then
+    psql -c "CREATE USER repmgr WITH SUPERUSER PASSWORD '${REPMGR_USER_PWD}';"
+    log_ok "Created repmgr user"
+else
+    log "User repmgr already exists"
+fi
+
+if ! psql -c "SELECT 1 FROM pg_database WHERE datname='repmgr'" | grep -q 1; then
+    psql -c "CREATE DATABASE repmgr;"
+    log_ok "Created repmgr database"
+else
+    log "Database repmgr already exists"
+fi
+
+psql -c "GRANT ALL PRIVILEGES ON DATABASE repmgr TO repmgr;"
+psql -c "ALTER USER repmgr SET search_path TO repmgr, railway, public;"
+log_ok "Configured repmgr user and database permissions"
+
+# Done with psql commands; stop Postgres and continue the setup
+log_hl "Stopping Postgres ⏳"
+su -m postgres -c "pg_ctl -D ${PGDATA} stop"
+
+# Create repmgr configuration file
+cat > "$REPMGR_CONF" << EOF
+node_id=1
+node_name='node1'
+conninfo='host=${RAILWAY_PRIVATE_DOMAIN} port=${PGPORT} user=repmgr dbname=repmgr connect_timeout=10'
+data_directory='${PGDATA}'
+use_replication_slots=yes
+monitoring_history=yes
+EOF
+log_ok "Created repmgr configuration at '$REPMGR_CONF'"
+
 # Create replication configuration file
 log "Creating replication configuration file at '$PG_REPLICATION_CONF_FILE'"
 cat > "PG_REPLICATION_CONF_FILE" << EOF
@@ -60,37 +100,6 @@ echo "" >> "$PG_CONF_FILE"
 echo "# Added by Railway replication setup on $(date +'%Y-%m-%d %H:%M:%S')" >> "$PG_CONF_FILE"
 echo "include 'postgresql.replication.conf'" >> "$PG_CONF_FILE"
 log_ok "Added include directive to '$PG_CONF_FILE'"
-
-# Create repmgr user and database
-log "Creating repmgr user and database ⏳"
-if ! psql -c "SELECT 1 FROM pg_roles WHERE rolname='repmgr'" | grep -q 1; then
-    psql -c "CREATE USER repmgr WITH SUPERUSER PASSWORD '${REPMGR_USER_PWD}';"
-    log_ok "Created repmgr user"
-else
-    log "User repmgr already exists"
-fi
-
-if ! psql -c "SELECT 1 FROM pg_database WHERE datname='repmgr'" | grep -q 1; then
-    psql -c "CREATE DATABASE repmgr;"
-    log_ok "Created repmgr database"
-else
-    log "Database repmgr already exists"
-fi
-
-psql -c "GRANT ALL PRIVILEGES ON DATABASE repmgr TO repmgr;"
-psql -c "ALTER USER repmgr SET search_path TO repmgr, railway, public;"
-log_ok "Configured repmgr user and database permissions"
-
-# Create repmgr configuration file
-cat > "$REPMGR_CONF" << EOF
-node_id=1
-node_name='node1'
-conninfo='host=${RAILWAY_PRIVATE_DOMAIN} port=${PGPORT} user=repmgr dbname=repmgr connect_timeout=10'
-data_directory='${PGDATA}'
-use_replication_slots=yes
-monitoring_history=yes
-EOF
-log_ok "Created repmgr configuration at '$REPMGR_CONF'"
 
 # Register primary node
 log "Registering primary node with repmgr ⏳"
