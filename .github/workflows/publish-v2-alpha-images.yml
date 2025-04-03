@@ -1,4 +1,4 @@
-name: Publish v2-alpha images
+name: Publish v2 Alpha Images
 
 on:
   workflow_dispatch:
