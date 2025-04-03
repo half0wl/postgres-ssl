@@ -15,7 +15,7 @@ jobs:
       matrix:
         dockerfile:
           [
-            "Dockerfile.16",
+            "Dockerfile.16-v2.alpha.001",
           ]
 
     steps:
