@@ -54,7 +54,7 @@ else
   log_ok "Successfully cloned primary node"
   log "Performing post-replication setup ⏳"
   # Start Postgres to register replica node
-  source "$SH_SSL"
+  source "$SH_CONFIGURE_SSL"
   su -m postgres -c "pg_ctl -D ${PG_DATA_DIR} start"
   if su -m postgres -c \
     "repmgr standby register --force -f $REPMGR_CONF_FILE 2>&1"; then
@@ -65,7 +65,7 @@ else
     # Acquire mutex to indicate replication setup is complete; this is
     # just a file that we create - its presence indicates that the
     # replication setup has been completed and should not be run again
-    touch "$REPLICATION_MUTEX"
+    touch "$READ_REPLICA_MUTEX"
   else
     log_err "Failed to register replica node."
     su -m postgres -c "pg_ctl -D ${PG_DATA_DIR} stop"

@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-SH_SSL="/usr/local/bin/_ssl.sh"
-SH_PRIMARY="/usr/local/bin/_primary.sh"
-SH_READREPLICA="/usr/local/bin/_readreplica.sh"
+SH_CONFIGURE_SSL="/usr/local/bin/_configure_ssl.sh"
+SH_CONFIGURE_PRIMARY="/usr/local/bin/_configure_primary.sh"
+SH_CONFIGURE_READ_REPLICA="/usr/local/bin/_configure_read_replica.sh"
 
 # ANSI colors
 GREEN_R='\033[0;32m'
@@ -111,23 +111,21 @@ if [ -n "$RAILWAY_PG_INSTANCE_TYPE" ]; then
     if [ -f "$READ_REPLICA_MUTEX" ]; then
       log "Read replica appears to be configured. Skipping."
     else
-      log_hl "Configuring as read replica"
-      source "$SH_READREPLICA"
+      source "$SH_CONFIGURE_READ_REPLICA"
     fi
     ;;
   "PRIMARY")
     # Configure as primary
     if grep -q \
       "include 'postgresql.replication.conf'" "$PG_CONF_FILE" 2>/dev/null; then
-      log "Replication appears to be configured. Skipping."
+      log "Primary replication appears to be configured. Skipping."
     else
-      log_hl "Configuring as primary"
-      source "$SH_PRIMARY"
+      source "$SH_CONFIGURE_PRIMARY"
     fi
     ;;
   *) ;;
   esac
 fi
 
-source "$SH_SSL"
+source "$SH_CONFIGURE_SSL"
 /usr/local/bin/docker-entrypoint.sh "$@"
