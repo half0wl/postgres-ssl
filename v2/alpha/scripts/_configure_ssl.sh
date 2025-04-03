@@ -1,6 +1,6 @@
 #!/bin/bash
 
-log "Starting SSL configuration ⏳"
+log "Starting SSL configuration"
 
 SSL_V3_EXT_FILE="$SSL_CERTS_DIR/v3.ext"
 SSL_ROOT_CN="pg-root-ca.railway.com"

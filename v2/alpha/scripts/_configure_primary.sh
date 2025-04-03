@@ -1,6 +1,6 @@
 #!/bin/bash
 
-log "Starting primary configuration ⏳"
+log "Starting primary configuration"
 
 if [ "$RAILWAY_PG_INSTANCE_TYPE" != "PRIMARY" ]; then
   log_err "This script can only be executed on a primary instance."
@@ -19,7 +19,7 @@ wait_for_postgres_start() {
   local max_attempts=10
   local attempt=1
 
-  log "Waiting for Postgres to start..."
+  log "Waiting for Postgres to start ⏳"
 
   while [ $attempt -le $max_attempts ]; do
     log "Postgres is not ready. Re-trying in $sleep_time seconds (attempt $attempt/$max_attempts)"
@@ -32,6 +32,27 @@ wait_for_postgres_start() {
   done
 
   log_err "Timed out waiting for Postgres to start! (exceeded $((max_attempts * sleep_time)) seconds)"
+  return 1
+}
+
+wait_for_postgres_stop() {
+  local sleep_time=3
+  local max_attempts=10
+  local attempt=1
+
+  log "Waiting for Postgres to stop ⏳"
+
+  while [ $attempt -le $max_attempts ]; do
+    if ! pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
+      log_ok "Postgres has stopped successfully!"
+      return 0
+    fi
+    log "Postgres is still shutting down. Re-checking in $sleep_time seconds (attempt $attempt/$max_attempts)"
+    sleep $sleep_time
+    attempt=$((attempt + 1))
+  done
+
+  log_err "Timed out waiting for Postgres to stop! (exceeded $((max_attempts * sleep_time)) seconds)"
   return 1
 }
 
@@ -166,7 +187,7 @@ su -m postgres -c "pg_ctl -D ${PGDATA} stop -m fast"
 wait_for_postgres_stop || {
   log_err "Postgres did not stop cleanly. Manual intervention may be required."
   # Force stop as a last resort if needed
-  log_hl "Attempting to force stop Postgres..."
+  log_warn "Attempting to force stop Postgres..."
   su -m postgres -c "pg_ctl -D ${PGDATA} stop -m immediate" || true
   sleep 3
 }
@@ -175,6 +196,5 @@ wait_for_postgres_stop || {
 if pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
   log_warn "Postgres is still running despite stop attempts."
 else
-  log_ok "Postgres has stopped successfully. The entrypoint will restart it"
-  log_ok "with the new configuration."
+  log_ok "Postgres has stopped successfully. It will be restarted from the default entrypoint."
 fi

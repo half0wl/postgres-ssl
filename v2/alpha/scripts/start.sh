@@ -40,10 +40,9 @@ log_err() {
 }
 
 echo ""
+log_hl "Version: $RAILWAY_RELEASE_VERSION"
 echo ""
-echo "--------------------------------------------------------------------"
 log_warn "This is an ALPHA version of the Railway Postgres image."
-log_warn ""
 log_warn "DO NOT USE THIS VERSION UNLESS ADVISED BY RAILWAY STAFF."
 log_warn ""
 log_warn "This version must only be used with direct support from"
@@ -57,8 +56,6 @@ log_warn "  You accept that you are doing so at your own risk,"
 log_warn "  and Railway is not responsible for any data loss"
 log_warn "  or corruption that may occur as a result of"
 log_warn "  ignoring this warning."
-echo "--------------------------------------------------------------------"
-echo ""
 echo ""
 
 if [ ! -z "$DEBUG_MODE" ]; then

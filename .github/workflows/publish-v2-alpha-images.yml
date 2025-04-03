@@ -53,4 +53,4 @@ jobs:
           file: ./v2/alpha/${{ matrix.dockerfile }}
           platforms: linux/arm64, linux/amd64
           push: true
-          tags: ghcr.io/${{ github.repository }}:${{ steps.extract_version.outputs.version }}-v2-alpha
+          tags: ghcr.io/${{ github.repository }}:${{ steps.extract_version.outputs.version }}

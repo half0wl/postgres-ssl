@@ -1,6 +1,6 @@
 #!/bin/bash
 
-log "Starting read replica configuration ⏳"
+log "Starting read replica configuration"
 
 if [ "$RAILWAY_PG_INSTANCE_TYPE" != "READREPLICA" ]; then
   log_err "This script can only be executed on a replica instance."
