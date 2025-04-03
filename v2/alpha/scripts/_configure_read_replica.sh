@@ -66,11 +66,13 @@ fi
 log "Performing post-replication setup ⏳"
 
 source "$SH_CONFIGURE_SSL"
-export PGPASSWORD="$CURRENT_PGPASSWORD" # restore original PGPASSWORD
-try_start_postgres
+# export PGPASSWORD="$CURRENT_PGPASSWORD" # restore original PGPASSWORD
+# try_start_postgres
 
 if su -m postgres -c \
-  "repmgr standby register --force -f $REPMGR_CONF_FILE 2>&1"; then
+  "repmgr -h $PRIMARY_PGHOST -p $PRIMARY_PGPORT \
+   -d repmgr -U repmgr -f $REPMGR_CONF_FILE \
+   standby register --force 2>&1"; then
   log_ok "Successfully registered replica node."
   # Acquire mutex to indicate replication setup is complete; this is
   # just a file that we create - its presence indicates that the
@@ -80,4 +82,4 @@ else
   log_err "Failed to register replica node."
 fi
 
-try_stop_postgres
+# try_stop_postgres
