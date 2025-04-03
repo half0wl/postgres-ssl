@@ -57,7 +57,7 @@ log_ok "Created repmgr configuration at '$REPMGR_CONF_FILE'"
 
 # Create replication configuration file
 log "Creating replication configuration file at '$PG_REPLICATION_CONF_FILE'"
-cat >"PG_REPLICATION_CONF_FILE" <<EOF
+cat >"$PG_REPLICATION_CONF_FILE" <<EOF
 max_wal_senders = 20
 max_replication_slots = 20
 wal_keep_segments = 800
