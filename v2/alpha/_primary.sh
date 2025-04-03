@@ -107,14 +107,14 @@ sudo chmod 700 "$PG_REPLICATION_CONF_FILE"
 log "Created replication configuration at '$PG_REPLICATION_CONF_FILE'"
 
 # Modify PG_CONF_FILE to include replication conf
-PG_CONF_FILE_BAK="${PG_CONF_FILE}.$(date +'%d-%m-%Y').bak"
+PG_CONF_FILE_BAK="${PG_CONF_FILE}.$(date +'%d-%m-%Y_%H-%M-%S').bak"
 log "Backing up '$PG_CONF_FILE' to '$PG_CONF_FILE_BAK' ⏳"
 cp $PG_CONF_FILE $PG_CONF_FILE_BAK
 log "'$PG_CONF_FILE' backed up to '$PG_CONF_FILE_BAK'"
 
 if ! grep -q "include '$PG_REPLICATION_CONF_FILENAME'" "$PG_CONF_FILE"; then
   echo "" >>"$PG_CONF_FILE"
-  echo "# Added by Railway replication setup on $(date +'%Y-%m-%d %H:%M:%S')" >>"$PG_CONF_FILE"
+  echo "# Added by Railway on $(date +'%Y-%m-%d %H:%M:%S') [_primary.sh]" >>"$PG_CONF_FILE"
   echo "include '$PG_REPLICATION_CONF_FILENAME'" >>"$PG_CONF_FILE"
   log_ok "Added include directive for replication conf to '$PG_CONF_FILE'"
 else
@@ -134,7 +134,7 @@ if su -m postgres -c "repmgr -f $REPMGR_CONF_FILE primary register"; then
     log_err "Current last line: '$LAST_LINE'"
     log_err "Skipping pg_hba.conf modification"
   else
-    PG_HBA_CONF_FILE_BAK="${PG_HBA_CONF_FILE}.$(date +'%d-%m-%Y').bak"
+    PG_HBA_CONF_FILE_BAK="${PG_HBA_CONF_FILE}.$(date +'%d-%m-%Y_%H-%M-%S').bak"
     log "Backing up '$PG_HBA_CONF_FILE' to '$PG_HBA_CONF_FILE_BAK' ⏳"
     cp $PG_HBA_CONF_FILE $PG_HBA_CONF_FILE_BAK
     log "'$PG_HBA_CONF_FILE' backed up to '$PG_HBA_CONF_FILE_BAK'"
@@ -144,7 +144,7 @@ if su -m postgres -c "repmgr -f $REPMGR_CONF_FILE primary register"; then
     # Get all lines except the last one
     head -n -1 "$PG_HBA_CONF_FILE" >"$_TMPFILE"
     # Add our new line
-    echo "# Added by Railway on $(date +'%Y-%m-%d %H:%M:%S')" >>"$_TMPFILE"
+    echo "# Added by Railway on $(date +'%Y-%m-%d %H:%M:%S') [_primary.sh]" >>"$_TMPFILE"
     echo "host replication repmgr ::0/0 trust" >>"$_TMPFILE"
     # Add the last line back
     echo "host all all all scram-sha-256" >>"$_TMPFILE"

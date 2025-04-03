@@ -109,6 +109,7 @@ fi
 
 if ! grep -q "ssl = on" "$PG_CONF_FILE"; then
   cat >>"$PG_CONF_FILE" <<EOF
+# Added by Railway on $(date +'%Y-%m-%d %H:%M:%S') [_ssl.sh]
 ssl = on
 ssl_ca_file = '$SSL_ROOT_CRT'
 ssl_key_file = '$SSL_SERVER_KEY'
