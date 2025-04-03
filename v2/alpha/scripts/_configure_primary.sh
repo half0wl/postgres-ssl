@@ -44,7 +44,6 @@ wait_for_postgres_stop() {
 
   while [ $attempt -le $max_attempts ]; do
     if ! pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
-      log_ok "Postgres has stopped successfully!"
       return 0
     fi
     log "Postgres is still shutting down. Re-checking in $sleep_time seconds (attempt $attempt/$max_attempts)"
@@ -187,7 +186,7 @@ su -m postgres -c "pg_ctl -D ${PGDATA} stop -m fast"
 wait_for_postgres_stop || {
   log_err "Postgres did not stop cleanly. Manual intervention may be required."
   # Force stop as a last resort if needed
-  log_warn "Attempting to force stop Postgres..."
+  log_warn "Attempting to force stop Postgres."
   su -m postgres -c "pg_ctl -D ${PGDATA} stop -m immediate" || true
   sleep 3
 }
@@ -196,5 +195,5 @@ wait_for_postgres_stop || {
 if pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
   log_warn "Postgres is still running despite stop attempts."
 else
-  log_ok "Postgres has stopped successfully. It will be restarted from the default entrypoint."
+  log_ok "Postgres stopped. It will be restarted from the default entrypoint."
 fi
