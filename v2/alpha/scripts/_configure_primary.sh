@@ -14,7 +14,7 @@ if [ -z "$REPMGR_USER_PWD" ]; then
   exit 1
 fi
 
-try_stop_postgres
+try_start_postgres
 
 PG_REPLICATION_CONF_FILENAME="postgresql.replication.conf"
 PG_REPLICATION_CONF_FILE="${PGDATA}/${PG_REPLICATION_CONF_FILENAME}"
