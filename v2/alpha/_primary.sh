@@ -108,7 +108,7 @@ if su -m postgres -c "repmgr -f $REPMGR_CONF_FILE primary register"; then
 
     # Replace the original file
     mv "$_TMPFILE" "$PG_HBA_CONF_FILE"
-    sudo chown postgres:postgres "$PG_HBA_CONF"
+    sudo chown postgres:postgres "$PG_HBA_CONF_FILE"
     sudo chmod 600 "$PG_HBA_CONF_FILE"
 
     log_ok "Successfully updated '$PG_HBA_CONF_FILE' with replication access."
