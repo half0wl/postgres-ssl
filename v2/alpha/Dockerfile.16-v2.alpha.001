@@ -1,6 +1,6 @@
-ENV RAILWAY_RELEASE_VERSION="16-v2.alpha.001"
-
 FROM postgres:16-bookworm
+
+ENV RAILWAY_RELEASE_VERSION="16-v2.alpha.001"
 
 RUN apt-get update && apt-get install -y \
     sudo \
