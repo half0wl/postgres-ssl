@@ -9,19 +9,6 @@ if [ "$RAILWAY_PG_INSTANCE_TYPE" != "READREPLICA" ]; then
   exit 1
 fi
 
-if ! [[ "$OUR_NODE_ID" =~ ^[0-9]+$ ]]; then
-  log_err "OUR_NODE_ID must be an integer."
-  log_err "(received: OUR_NODE_ID='$OUR_NODE_ID')"
-  exit 1
-fi
-
-if [ "$OUR_NODE_ID" -lt 2 ]; then
-  log_err "OUR_NODE_ID must be ≥2. The primary node is always 'node1'"
-  log_err "and subsequent nodes must be numbered starting from 2."
-  log_err "(received: OUR_NODE_ID='$OUR_NODE_ID')"
-  exit 1
-fi
-
 # Create repmgr configuration file
 cat >"$REPMGR_CONF_FILE" <<EOF
 node_id=${OUR_NODE_ID}

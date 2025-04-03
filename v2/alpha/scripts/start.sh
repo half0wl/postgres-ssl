@@ -104,18 +104,34 @@ READ_REPLICA_MUTEX="${REPMGR_DIR}/rrmutex"
 if [ -n "$RAILWAY_PG_INSTANCE_TYPE" ]; then
   case "$RAILWAY_PG_INSTANCE_TYPE" in
   "READREPLICA")
-    # Configure as read replica
+    if ! [[ "$OUR_NODE_ID" =~ ^[0-9]+$ ]]; then
+      log_err "OUR_NODE_ID is required in READREPLICA mode. It must be an integer ≥2."
+      log_err "The primary node is always 'node1' and subsequent nodes must be numbered starting from 2."
+      log_err "(received OUR_NODE_ID='$OUR_NODE_ID')"
+      exit 1
+    fi
+    if [ "$OUR_NODE_ID" -lt 2 ]; then
+      log_err "OUR_NODE_ID is required in READREPLICA mode. It must be an integer ≥2."
+      log_err "The primary node is always 'node1' and subsequent nodes must be numbered starting from 2."
+      log_err "(received OUR_NODE_ID='$OUR_NODE_ID')"
+      exit 1
+    fi
+    log_hl "Running as READREPLICA (nodeid=$OUR_NODE_ID)"
+
+    # Configure as read replica if not already done
     if [ -f "$READ_REPLICA_MUTEX" ]; then
-      log "Read replica appears to be configured. Skipping."
+      log "Skipping configuration for READREPLICA (appears to be configured already)"
     else
       source "$SH_CONFIGURE_READ_REPLICA"
     fi
     ;;
   "PRIMARY")
-    # Configure as primary
+    log_hl "Running as PRIMARY (nodeid=1)"
+
+    # Configure as primary if not already done
     if grep -q \
       "include 'postgresql.replication.conf'" "$PG_CONF_FILE" 2>/dev/null; then
-      log "Primary replication appears to be configured. Skipping."
+      log "Skipping configuration for PRIMARY (appears to be configured already)"
     else
       source "$SH_CONFIGURE_PRIMARY"
     fi
