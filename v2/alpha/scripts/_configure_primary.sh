@@ -1,6 +1,6 @@
 #!/bin/bash
 
-log "🚀 Starting primary configuration..."
+log "Starting primary configuration ⏳"
 
 if [ "$RAILWAY_PG_INSTANCE_TYPE" != "PRIMARY" ]; then
   log_err "This script can only be executed on a primary instance."
@@ -22,8 +22,7 @@ wait_for_postgres_start() {
   log "Waiting for Postgres to start..."
 
   while [ $attempt -le $max_attempts ]; do
-    log "Attempt $attempt/$max_attempts: Postgres not ready yet"
-    log "Waiting $sleep_time seconds..."
+    log "Postgres is not ready. Re-trying in $sleep_time seconds (attempt $attempt/$max_attempts)"
     if psql $connection_string -c "SELECT 1;" >/dev/null 2>&1; then
       log_ok "Postgres is up and running!"
       return 0
@@ -32,8 +31,7 @@ wait_for_postgres_start() {
     attempt=$((attempt + 1))
   done
 
-  log_err "Timed out waiting for Postgres to start"
-  log_err "(exceeded $((max_attempts * sleep_time)) seconds)"
+  log_err "Timed out waiting for Postgres to start! (exceeded $((max_attempts * sleep_time)) seconds)"
   return 1
 }
 
@@ -41,7 +39,7 @@ wait_for_postgres_start() {
 if pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
   log_ok "Postgres is up and running!"
 else
-  log_hl "Starting Postgres ⏳"
+  log "Starting Postgres ⏳"
   su -m postgres -c "pg_ctl -D ${PGDATA} start"
 
   # Wait for Postgres to be ready after starting
