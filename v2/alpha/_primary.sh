@@ -43,10 +43,6 @@ psql -c "ALTER USER repmgr SET search_path TO repmgr, railway, public;"
 
 log_ok "Configured repmgr user and database permissions"
 
-# Stop Postgres and continue the setup
-log_hl "Stopping Postgres ⏳"
-su -m postgres -c "pg_ctl -D ${PGDATA} stop"
-
 # Create repmgr configuration file
 # (node_id is always 1 on primary)
 cat >"$REPMGR_CONF_FILE" <<EOF
@@ -121,3 +117,7 @@ if su -m postgres -c "repmgr -f $REPMGR_CONF_FILE primary register"; then
 else
   log_err "Failed to register primary node with repmgr."
 fi
+
+# Stop Postgres and let the entrypoint start it again
+log_hl "Stopping Postgres ⏳"
+su -m postgres -c "pg_ctl -D ${PGDATA} stop"
