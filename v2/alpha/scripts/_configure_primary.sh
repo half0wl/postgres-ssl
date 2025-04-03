@@ -95,7 +95,7 @@ log_ok "Created repmgr config ->> '$REPMGR_CONF_FILE'"
 cat >"$PG_REPLICATION_CONF_FILE" <<EOF
 max_wal_senders = 20
 max_replication_slots = 20
-wal_keep_segments = 800
+wal_keep_size = 512MB
 wal_level = replica
 wal_log_hints = on
 hot_standby = on
