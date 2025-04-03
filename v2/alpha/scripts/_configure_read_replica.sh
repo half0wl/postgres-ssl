@@ -65,7 +65,7 @@ fi
 
 log "Performing post-replication setup ⏳"
 
-source "$SH_CONFIGURE_SSL"
+# source "$SH_CONFIGURE_SSL"
 # export PGPASSWORD="$CURRENT_PGPASSWORD" # restore original PGPASSWORD
 # try_start_postgres
 
