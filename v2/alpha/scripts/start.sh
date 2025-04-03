@@ -1,82 +1,12 @@
 #!/bin/bash
 set -e
 
+SH_INCLUDE="/usr/local/bin/_include.sh"
 SH_CONFIGURE_SSL="/usr/local/bin/_configure_ssl.sh"
 SH_CONFIGURE_PRIMARY="/usr/local/bin/_configure_primary.sh"
 SH_CONFIGURE_READ_REPLICA="/usr/local/bin/_configure_read_replica.sh"
 
-GREEN_R='\033[0;32m'
-GREEN_B='\033[1;92m'
-RED_R='\033[0;31m'
-RED_B='\033[1;91m'
-YELLOW_R='\033[0;33m'
-YELLOW_B='\033[1;93m'
-PURPLE_R='\033[0;35m'
-PURPLE_B='\033[1;95m'
-WHITE_R='\033[0;37m'
-WHITE_B='\033[1;97m'
-NC='\033[0m'
-
-log() {
-  echo -e "[ ${WHITE_R}ℹ️ INFO${NC} ] ${WHITE_B}$1${NC}"
-}
-
-log_hl() {
-  echo -e "[ ${PURPLE_R}ℹ️ INFO${NC} ] ${PURPLE_B}$1${NC}"
-}
-
-log_ok() {
-  echo -e "[ ${GREEN_R}✅ OK${NC}   ] ${GREEN_B}$1${NC}"
-}
-
-log_warn() {
-  echo -e "[ ${YELLOW_R}⚠️ WARN${NC} ] ${YELLOW_B}$1${NC}"
-}
-
-log_err() {
-  echo -e "[ ${RED_R}⛔ ERR${NC}  ] ${RED_B}$1${NC}" >&2
-}
-
-wait_for_postgres_start() {
-  local sleep_time=3
-  local max_attempts=10
-  local attempt=1
-
-  log "Waiting for Postgres to start ⏳"
-
-  while [ $attempt -le $max_attempts ]; do
-    log "Postgres is not ready. Re-trying in $sleep_time seconds (attempt $attempt/$max_attempts)"
-    if psql $connection_string -c "SELECT 1;" >/dev/null 2>&1; then
-      log_ok "Postgres is up and running!"
-      return 0
-    fi
-    sleep $sleep_time
-    attempt=$((attempt + 1))
-  done
-
-  log_err "Timed out waiting for Postgres to start! (exceeded $((max_attempts * sleep_time)) seconds)"
-  return 1
-}
-
-wait_for_postgres_stop() {
-  local sleep_time=3
-  local max_attempts=10
-  local attempt=1
-
-  log "Waiting for Postgres to stop ⏳"
-
-  while [ $attempt -le $max_attempts ]; do
-    if ! pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
-      return 0
-    fi
-    log "Postgres is still shutting down. Re-checking in $sleep_time seconds (attempt $attempt/$max_attempts)"
-    sleep $sleep_time
-    attempt=$((attempt + 1))
-  done
-
-  log_err "Timed out waiting for Postgres to stop! (exceeded $((max_attempts * sleep_time)) seconds)"
-  return 1
-}
+source "$SH_INCLUDE"
 
 echo ""
 log_hl "Version: $RAILWAY_RELEASE_VERSION"
@@ -143,23 +73,19 @@ READ_REPLICA_MUTEX="${REPMGR_DIR}/rrmutex"
 if [ -n "$RAILWAY_PG_INSTANCE_TYPE" ]; then
   case "$RAILWAY_PG_INSTANCE_TYPE" in
   "READREPLICA")
-    if ! [[ "$OUR_NODE_ID" =~ ^[0-9]+$ ]]; then
-      log_err "OUR_NODE_ID is required in READREPLICA mode. It must be an integer ≥2."
-      log_err "The primary node is always 'node1' and subsequent nodes must be numbered starting from 2."
-      log_err "(received OUR_NODE_ID='$OUR_NODE_ID')"
-      exit 1
-    fi
-    if [ "$OUR_NODE_ID" -lt 2 ]; then
-      log_err "OUR_NODE_ID is required in READREPLICA mode. It must be an integer ≥2."
-      log_err "The primary node is always 'node1' and subsequent nodes must be numbered starting from 2."
-      log_err "(received OUR_NODE_ID='$OUR_NODE_ID')"
+    if ! [[ "$OUR_NODE_ID" =~ ^[0-9]+$ ]] || [ "$OUR_NODE_ID" -lt 2 ]; then
+      log_err "\
+OUR_NODE_ID is required in READREPLICA mode. It must be an integer ≥2. \
+The primary node is always 'node1' and subsequent nodes must be numbered \
+starting from 2. (received OUR_NODE_ID='$OUR_NODE_ID')\
+"
       exit 1
     fi
     log_hl "Running as READREPLICA (nodeid=$OUR_NODE_ID)"
 
     # Configure as read replica if not already done
     if [ -f "$READ_REPLICA_MUTEX" ]; then
-      log "Skipping configuration for READREPLICA (appears to be configured already)"
+      log "READREPLICA configuration appears to be done. Skipping config."
     else
       source "$SH_CONFIGURE_READ_REPLICA"
     fi
@@ -170,7 +96,7 @@ if [ -n "$RAILWAY_PG_INSTANCE_TYPE" ]; then
     # Configure as primary if not already done
     if grep -q \
       "include 'postgresql.replication.conf'" "$PG_CONF_FILE" 2>/dev/null; then
-      log "Skipping configuration for PRIMARY (appears to be configured already)"
+      log "PRIMARY configuration appears to be done. Skipping config."
     else
       source "$SH_CONFIGURE_PRIMARY"
     fi

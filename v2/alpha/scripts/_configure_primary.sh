@@ -14,19 +14,7 @@ if [ -z "$REPMGR_USER_PWD" ]; then
   exit 1
 fi
 
-# Start Postgres if not already running
-if pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
-  log_ok "Postgres is up and running!"
-else
-  log "Starting Postgres ⏳"
-  su -m postgres -c "pg_ctl -D ${PGDATA} start"
-
-  # Wait for Postgres to be ready after starting
-  wait_for_postgres_start || {
-    log_err "Failed to start Postgres properly. Exiting."
-    exit 1
-  }
-fi
+try_stop_postgres
 
 PG_REPLICATION_CONF_FILENAME="postgresql.replication.conf"
 PG_REPLICATION_CONF_FILE="${PGDATA}/${PG_REPLICATION_CONF_FILENAME}"
@@ -138,21 +126,4 @@ else
   log_err "Failed to register primary node with repmgr."
 fi
 
-log_hl "Stopping Postgres ⏳"
-su -m postgres -c "pg_ctl -D ${PGDATA} stop -m fast"
-
-# Wait for Postgres to fully stop
-wait_for_postgres_stop || {
-  log_err "Postgres did not stop cleanly. Manual intervention may be required."
-  # Force stop as a last resort if needed
-  log_warn "Attempting to force stop Postgres."
-  su -m postgres -c "pg_ctl -D ${PGDATA} stop -m immediate" || true
-  sleep 3
-}
-
-# Verify Postgres has stopped
-if pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
-  log_warn "Postgres is still running despite stop attempts."
-else
-  log_ok "Postgres stopped. It will be restarted from the default entrypoint."
-fi
+try_stop_postgres

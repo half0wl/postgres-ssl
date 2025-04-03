@@ -119,3 +119,6 @@ EOF
 else
   log_ok "SSL: Config ok (Postgres has already been configured with ssl=on)."
 fi
+
+sudo chown -R postgres:postgres "$SSL_CERTS_DIR"
+sudo chmod 700 "$SSL_CERTS_DIR"

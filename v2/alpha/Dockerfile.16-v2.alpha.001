@@ -17,6 +17,7 @@ RUN echo \
 COPY --chmod=755 scripts/_configure_primary.sh /usr/local/bin/_configure_primary.sh
 COPY --chmod=755 scripts/_configure_read_replica.sh /usr/local/bin/_configure_read_replica.sh
 COPY --chmod=755 scripts/_configure_ssl.sh /usr/local/bin/_configure_ssl.sh
+COPY --chmod=755 scripts/_include.sh /usr/local/bin/_include.sh
 COPY --chmod=755 scripts/start.sh /usr/local/bin/start.sh
 
 ENTRYPOINT ["start.sh"]
