@@ -24,6 +24,11 @@ if [ -z "$PRIMARY_REPMGR_USER_PWD" ]; then
   exit 1
 fi
 
+# Store the current value of PGPASSWORD; we need to export this to the primary
+# repmgr user password for repmgr to pick it up, and we also need this value
+# subsequently to start Postgres for replica registration
+CURRENT_PGPASSWORD="$PGPASSWORD"
+
 # Create repmgr configuration file
 cat >"$REPMGR_CONF_FILE" <<EOF
 node_id=${OUR_NODE_ID}
@@ -61,8 +66,7 @@ fi
 log "Performing post-replication setup ⏳"
 
 source "$SH_CONFIGURE_SSL"
-unset PGUSER
-unset PGPASSWORD
+export PGPASSWORD="$CURRENT_PGPASSWORD" # restore original PGPASSWORD
 try_start_postgres
 
 if su -m postgres -c \
