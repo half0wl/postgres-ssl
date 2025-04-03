@@ -49,7 +49,8 @@ else
   }
 fi
 
-PG_REPLICATION_CONF_FILE="${PG_DATA_DIR}/postgresql.replication.conf"
+PG_REPLICATION_CONF_FILENAME="postgresql.replication.conf"
+PG_REPLICATION_CONF_FILE="${PG_DATA_DIR}/${PG_REPLICATION_CONF_FILENAME}"
 PG_HBA_CONF_FILE="${PGDATA}/pg_hba.conf"
 
 # Create repmgr user and database
@@ -76,6 +77,7 @@ log_ok "Configured repmgr user and database permissions"
 
 # Create repmgr configuration file
 # (node_id is always 1 on primary)
+log "Creating repmgr configuration file at '$REPMGR_CONF_FILE'"
 cat >"$REPMGR_CONF_FILE" <<EOF
 node_id=1
 node_name='node1'
@@ -84,6 +86,8 @@ data_directory='${PGDATA}'
 use_replication_slots=yes
 monitoring_history=yes
 EOF
+sudo chown postgres:postgres "$REPMGR_CONF_FILE"
+sudo chmod 700 "$REPMGR_CONF_FILE"
 log "Created repmgr configuration at '$REPMGR_CONF_FILE'"
 
 # Create replication configuration file
@@ -98,6 +102,8 @@ hot_standby = on
 archive_mode = on
 archive_command = '/bin/true'
 EOF
+sudo chown postgres:postgres "$PG_REPLICATION_CONF_FILE"
+sudo chmod 700 "$PG_REPLICATION_CONF_FILE"
 log "Created replication configuration at '$PG_REPLICATION_CONF_FILE'"
 
 # Modify PG_CONF_FILE to include replication conf
@@ -105,10 +111,15 @@ PG_CONF_FILE_BAK="${PG_CONF_FILE}.$(date +'%d-%m-%Y').bak"
 log "Backing up '$PG_CONF_FILE' to '$PG_CONF_FILE_BAK' ⏳"
 cp $PG_CONF_FILE $PG_CONF_FILE_BAK
 log "'$PG_CONF_FILE' backed up to '$PG_CONF_FILE_BAK'"
-echo "" >>"$PG_CONF_FILE"
-echo "# Added by Railway replication setup on $(date +'%Y-%m-%d %H:%M:%S')" >>"$PG_CONF_FILE"
-echo "include 'postgresql.replication.conf'" >>"$PG_CONF_FILE"
-log_ok "Added include directive to '$PG_CONF_FILE'"
+
+if ! grep -q "include '$PG_REPLICATION_CONF_FILENAME'" "$PG_CONF_FILE"; then
+  echo "" >>"$PG_CONF_FILE"
+  echo "# Added by Railway replication setup on $(date +'%Y-%m-%d %H:%M:%S')" >>"$PG_CONF_FILE"
+  echo "include '$PG_REPLICATION_CONF_FILENAME'" >>"$PG_CONF_FILE"
+  log_ok "Added include directive for replication conf to '$PG_CONF_FILE'"
+else
+  log "Include directive for replication conf already present in '$PG_CONF_FILE'"
+fi
 
 # Register primary node
 log "Registering primary node with repmgr ⏳"
@@ -141,7 +152,7 @@ if su -m postgres -c "repmgr -f $REPMGR_CONF_FILE primary register"; then
     # Replace the original file
     mv "$_TMPFILE" "$PG_HBA_CONF_FILE"
     sudo chown postgres:postgres "$PG_HBA_CONF_FILE"
-    sudo chmod 600 "$PG_HBA_CONF_FILE"
+    sudo chmod 700 "$PG_HBA_CONF_FILE"
 
     log_ok "Updated '$PG_HBA_CONF_FILE' with replication access."
   fi
@@ -150,6 +161,22 @@ else
   log_err "Failed to register primary node with repmgr."
 fi
 
-# Stop Postgres and let the entrypoint start it again
+log_ok "Primary configuration completed."
 log_hl "Stopping Postgres ⏳"
-su -m postgres -c "pg_ctl -D ${PGDATA} stop"
+su -m postgres -c "pg_ctl -D ${PGDATA} stop -m fast"
+
+# Wait for Postgres to fully stop
+wait_for_postgres_stop || {
+  log_err "Postgres did not stop cleanly. Manual intervention may be required."
+  # Force stop as a last resort if needed
+  log_hl "Attempting to force stop Postgres..."
+  su -m postgres -c "pg_ctl -D ${PGDATA} stop -m immediate" || true
+  sleep 3
+}
+
+# Verify Postgres has stopped
+if pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
+  log_warn "Postgres is still running despite stop attempts."
+else
+  log_ok "Postgres has stopped successfully. The entrypoint will restart it with the new configuration."
+fi
