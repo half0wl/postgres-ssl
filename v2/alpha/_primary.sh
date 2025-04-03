@@ -16,19 +16,17 @@ fi
 
 wait_for_postgres() {
   local sleep_time=3
-  local max_attempts=30
+  local max_attempts=10
   local attempt=1
-  local connection_string=""
 
   log "Waiting for Postgres to start..."
 
   while [ $attempt -le $max_attempts ]; do
+    log "Attempt $attempt/$max_attempts: Postgres not ready yet, waiting $sleep_time seconds..."
     if psql $connection_string -c "SELECT 1;" >/dev/null 2>&1; then
-      log_hl "Postgres is up and running!"
+      log_ok "Postgres is up and running!"
       return 0
     fi
-
-    log "Attempt $attempt/$max_attempts: Postgres not ready yet, waiting $sleep_time seconds..."
     sleep $sleep_time
     attempt=$((attempt + 1))
   done
@@ -39,7 +37,7 @@ wait_for_postgres() {
 
 # Start Postgres if not already running
 if pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
-  log_hl "Postgres is running."
+  log_ok "Postgres is up and running!"
 else
   log_hl "Starting Postgres ⏳"
   su -m postgres -c "pg_ctl -D ${PGDATA} start"
@@ -86,7 +84,7 @@ data_directory='${PGDATA}'
 use_replication_slots=yes
 monitoring_history=yes
 EOF
-log_ok "Created repmgr configuration at '$REPMGR_CONF_FILE'"
+log "Created repmgr configuration at '$REPMGR_CONF_FILE'"
 
 # Create replication configuration file
 log "Creating replication configuration file at '$PG_REPLICATION_CONF_FILE'"
@@ -100,12 +98,13 @@ hot_standby = on
 archive_mode = on
 archive_command = '/bin/true'
 EOF
+log "Created replication configuration at '$PG_REPLICATION_CONF_FILE'"
 
 # Modify PG_CONF_FILE to include replication conf
 PG_CONF_FILE_BAK="${PG_CONF_FILE}.$(date +'%d-%m-%Y').bak"
 log "Backing up '$PG_CONF_FILE' to '$PG_CONF_FILE_BAK' ⏳"
 cp $PG_CONF_FILE $PG_CONF_FILE_BAK
-log_ok "'$PG_CONF_FILE' backed up to '$PG_CONF_FILE_BAK'"
+log "'$PG_CONF_FILE' backed up to '$PG_CONF_FILE_BAK'"
 echo "" >>"$PG_CONF_FILE"
 echo "# Added by Railway replication setup on $(date +'%Y-%m-%d %H:%M:%S')" >>"$PG_CONF_FILE"
 echo "include 'postgresql.replication.conf'" >>"$PG_CONF_FILE"
@@ -127,7 +126,7 @@ if su -m postgres -c "repmgr -f $REPMGR_CONF_FILE primary register"; then
     PG_HBA_CONF_FILE_BAK="${PG_HBA_CONF_FILE}.$(date +'%d-%m-%Y').bak"
     log "Backing up '$PG_HBA_CONF_FILE' to '$PG_HBA_CONF_FILE_BAK' ⏳"
     cp $PG_HBA_CONF_FILE $PG_HBA_CONF_FILE_BAK
-    log_ok "'$PG_HBA_CONF_FILE' backed up to '$PG_HBA_CONF_FILE_BAK'"
+    log "'$PG_HBA_CONF_FILE' backed up to '$PG_HBA_CONF_FILE_BAK'"
 
     # Create temporary file with the desired content
     _TMPFILE=$(mktemp)
@@ -144,7 +143,7 @@ if su -m postgres -c "repmgr -f $REPMGR_CONF_FILE primary register"; then
     sudo chown postgres:postgres "$PG_HBA_CONF_FILE"
     sudo chmod 600 "$PG_HBA_CONF_FILE"
 
-    log_ok "Successfully updated '$PG_HBA_CONF_FILE' with replication access."
+    log_ok "Updated '$PG_HBA_CONF_FILE' with replication access."
   fi
   log_ok "Primary node configuration complete."
 else
