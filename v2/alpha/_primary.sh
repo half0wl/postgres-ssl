@@ -14,12 +14,45 @@ if [ -z "$REPMGR_USER_PWD" ]; then
   exit 1
 fi
 
+wait_for_postgres() {
+  local sleep_time=3
+  local max_attempts=30
+  local attempt=1
+  local connection_string=""
+
+  log "Waiting for Postgres to start..."
+
+  while [ $attempt -le $max_attempts ]; do
+    if psql $connection_string -c "SELECT 1;" >/dev/null 2>&1; then
+      log_hl "Postgres is up and running!"
+      return 0
+    fi
+
+    log "Attempt $attempt/$max_attempts: Postgres not ready yet, waiting $sleep_time seconds..."
+    sleep $sleep_time
+    attempt=$((attempt + 1))
+  done
+
+  log_err "Timed out waiting for Postgres to start after $((max_attempts * sleep_time)) seconds."
+  return 1
+}
+
+# Start Postgres if not already running
+if pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
+  log_hl "Postgres is running."
+else
+  log_hl "Starting Postgres ⏳"
+  su -m postgres -c "pg_ctl -D ${PGDATA} start"
+
+  # Wait for Postgres to be ready after starting
+  wait_for_postgres || {
+    log_err "Failed to start Postgres properly. Exiting."
+    exit 1
+  }
+fi
+
 PG_REPLICATION_CONF_FILE="${PG_DATA_DIR}/postgresql.replication.conf"
 PG_HBA_CONF_FILE="${PGDATA}/pg_hba.conf"
-
-# Temporarily start Postgres so we can run psql commands
-log_hl "Starting Postgres ⏳"
-su -m postgres -c "pg_ctl -D ${PGDATA} start"
 
 # Create repmgr user and database
 log "Creating repmgr user and database ⏳"
