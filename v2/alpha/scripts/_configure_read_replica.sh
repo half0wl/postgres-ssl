@@ -61,6 +61,8 @@ fi
 log "Performing post-replication setup ⏳"
 
 source "$SH_CONFIGURE_SSL"
+unset PGUSER
+unset PGPASSWORD
 try_start_postgres
 
 if su -m postgres -c \
