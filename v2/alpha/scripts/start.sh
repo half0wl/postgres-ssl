@@ -5,7 +5,6 @@ SH_CONFIGURE_SSL="/usr/local/bin/_configure_ssl.sh"
 SH_CONFIGURE_PRIMARY="/usr/local/bin/_configure_primary.sh"
 SH_CONFIGURE_READ_REPLICA="/usr/local/bin/_configure_read_replica.sh"
 
-# ANSI colors
 GREEN_R='\033[0;32m'
 GREEN_B='\033[1;92m'
 RED_R='\033[0;31m'
@@ -18,7 +17,6 @@ WHITE_R='\033[0;37m'
 WHITE_B='\033[1;97m'
 NC='\033[0m'
 
-# Logging utils
 log() {
   echo -e "[ ${WHITE_R}ℹ️ INFO${NC} ] ${WHITE_B}$1${NC}"
 }
@@ -37,6 +35,47 @@ log_warn() {
 
 log_err() {
   echo -e "[ ${RED_R}⛔ ERR${NC}  ] ${RED_B}$1${NC}" >&2
+}
+
+wait_for_postgres_start() {
+  local sleep_time=3
+  local max_attempts=10
+  local attempt=1
+
+  log "Waiting for Postgres to start ⏳"
+
+  while [ $attempt -le $max_attempts ]; do
+    log "Postgres is not ready. Re-trying in $sleep_time seconds (attempt $attempt/$max_attempts)"
+    if psql $connection_string -c "SELECT 1;" >/dev/null 2>&1; then
+      log_ok "Postgres is up and running!"
+      return 0
+    fi
+    sleep $sleep_time
+    attempt=$((attempt + 1))
+  done
+
+  log_err "Timed out waiting for Postgres to start! (exceeded $((max_attempts * sleep_time)) seconds)"
+  return 1
+}
+
+wait_for_postgres_stop() {
+  local sleep_time=3
+  local max_attempts=10
+  local attempt=1
+
+  log "Waiting for Postgres to stop ⏳"
+
+  while [ $attempt -le $max_attempts ]; do
+    if ! pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
+      return 0
+    fi
+    log "Postgres is still shutting down. Re-checking in $sleep_time seconds (attempt $attempt/$max_attempts)"
+    sleep $sleep_time
+    attempt=$((attempt + 1))
+  done
+
+  log_err "Timed out waiting for Postgres to stop! (exceeded $((max_attempts * sleep_time)) seconds)"
+  return 1
 }
 
 echo ""

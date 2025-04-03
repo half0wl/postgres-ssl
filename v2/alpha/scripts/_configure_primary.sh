@@ -14,47 +14,6 @@ if [ -z "$REPMGR_USER_PWD" ]; then
   exit 1
 fi
 
-wait_for_postgres_start() {
-  local sleep_time=3
-  local max_attempts=10
-  local attempt=1
-
-  log "Waiting for Postgres to start ⏳"
-
-  while [ $attempt -le $max_attempts ]; do
-    log "Postgres is not ready. Re-trying in $sleep_time seconds (attempt $attempt/$max_attempts)"
-    if psql $connection_string -c "SELECT 1;" >/dev/null 2>&1; then
-      log_ok "Postgres is up and running!"
-      return 0
-    fi
-    sleep $sleep_time
-    attempt=$((attempt + 1))
-  done
-
-  log_err "Timed out waiting for Postgres to start! (exceeded $((max_attempts * sleep_time)) seconds)"
-  return 1
-}
-
-wait_for_postgres_stop() {
-  local sleep_time=3
-  local max_attempts=10
-  local attempt=1
-
-  log "Waiting for Postgres to stop ⏳"
-
-  while [ $attempt -le $max_attempts ]; do
-    if ! pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
-      return 0
-    fi
-    log "Postgres is still shutting down. Re-checking in $sleep_time seconds (attempt $attempt/$max_attempts)"
-    sleep $sleep_time
-    attempt=$((attempt + 1))
-  done
-
-  log_err "Timed out waiting for Postgres to stop! (exceeded $((max_attempts * sleep_time)) seconds)"
-  return 1
-}
-
 # Start Postgres if not already running
 if pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
   log_ok "Postgres is up and running!"
